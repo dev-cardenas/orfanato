@@ -1,7 +1,10 @@
-import React from "react";
+import React, { useState, FormEvent, ChangeEvent } from "react";
 import { Map, Marker, TileLayer } from 'react-leaflet';
-
+import { LeafletMouseEvent } from 'leaflet';
+import { useHistory } from "react-router-dom";
 import { FiPlus } from "react-icons/fi";
+
+import api from '../services/api';
 
 import SideBar from "../components/SideBar";
 import mapIcon from "../utils/mapIcon";
@@ -11,12 +14,71 @@ import '../styles/pages/create-orphanage.css';
 
 export default function CreateOrphanage() {
 
+  const history = useHistory()
+
+  const [position, set_position] = useState({ latitude: 0, longitude: 0 })
+  const [name, set_name] = useState('')
+  const [about, set_about] = useState('')
+  const [instructions, set_instructions] = useState('')
+  const [open_hours, set_open_hours] = useState('')
+  const [open_on_weekends, set_open_on_weekends] = useState(true)
+  const [images, set_images] = useState<File[]>([])
+  const [preview_images, set_preview_images] = useState<string[]>([])
+
+
+  function handleSelectImages(event: ChangeEvent<HTMLInputElement>){
+    if(!event.target.files){
+      return;
+    }
+
+    const selected_images = Array.from(event.target.files)
+    set_images(selected_images)
+
+    const selected_images_preview = selected_images.map(image => URL.createObjectURL(image))
+    set_preview_images(selected_images_preview)
+  }
+
+  function handleMapClick(event: LeafletMouseEvent){
+    const { lat, lng } = event.latlng
+
+    set_position({
+      latitude: lat,
+      longitude : lng
+    })
+  }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    const { latitude, longitude } = position
+
+    const data = new FormData()
+
+
+    data.append('latitude', String(latitude));
+    data.append('longitude', String(longitude));
+    data.append('name', name);
+    data.append('about', about);
+    data.append('instructions', instructions);
+    data.append('open_hours', open_hours);
+    data.append('open_on_weekends', String(open_on_weekends));
+    images.forEach(image => {
+      data.append('images', image);
+    })
+
+    await api.post('orphanages', data);
+
+    alert('Se guardaron correctamente');
+
+    history.push('/app')
+
+  }
+
   return (
     <div id="page-orphanage">
       <SideBar />
 
       <main>
-        <form className="create-orphanage-form">
+        <form  onSubmit={handleSubmit} className="create-orphanage-form">
           <fieldset>
             <legend>Dados</legend>
 
@@ -24,56 +86,99 @@ export default function CreateOrphanage() {
               center={[-27.2092052,-49.6401092]}
               style={{ width: '100%', height: 280 }}
               zoom={15}
+              onClick={handleMapClick}
             >
               <TileLayer
                 url={`https://a.tile.openstreetmap.org/{z}/{x}/{y}.png`}
               />
 
-              <Marker interactive={false} icon={mapIcon} position={[-27.2092052,-49.6401092]} />
+              {
+                position.latitude !== 0
+                && <Marker interactive={false} icon={mapIcon} position={[position.latitude, position.longitude]} />
+              }
+
             </Map>
 
             <div className="input-block">
               <label htmlFor="name">Nome</label>
-              <input id="name" />
+              <input id="name" value={name} onChange={e => set_name(e.target.value)} />
             </div>
 
             <div className="input-block">
               <label htmlFor="about">Sobre <span>Máximo de 300 caracteres</span></label>
-              <textarea id="name" maxLength={300} />
+              <textarea
+                id="about"
+                maxLength={300}
+                value={about}
+                onChange={e => set_about(e.target.value)}
+              />
             </div>
 
             <div className="input-block">
-              <label htmlFor="images">Fotos</label>
+              <label>Fotos</label>
 
-              <div className="uploaded-image">
+              <div className="images-container">
+                {
+                  preview_images.map(image => (
+                    <img key={image} src={image} alt={name} />
+                  ))
+                }
+                <label htmlFor="images[]" className="new-image">
+                  <FiPlus size={24} color="#15b6d6" />
+                </label>
 
               </div>
 
-              <button className="new-image">
-                <FiPlus size={24} color="#15b6d6" />
-              </button>
+              <input
+                multiple
+                type="file"
+                id="image[]"
+                onChange={handleSelectImages}
+              />
+
+
             </div>
           </fieldset>
 
           <fieldset>
-            <legend>Visitação</legend>
+            <legend>Visitas</legend>
 
             <div className="input-block">
-              <label htmlFor="instructions">Instruções</label>
-              <textarea id="instructions" />
+              <label htmlFor="instructions">Instrucciones</label>
+              <textarea
+                id="instructions"
+                value={instructions}
+                onChange={e => set_instructions(e.target.value)}
+              />
             </div>
 
             <div className="input-block">
-              <label htmlFor="opening_hours">Nome</label>
-              <input id="opening_hours" />
+              <label htmlFor="opening_hours">Horario de funcionamiento</label>
+              <input
+                id="opening_hours"
+                value={open_hours}
+                onChange={e => set_open_hours(e.target.value)}
+              />
             </div>
 
             <div className="input-block">
-              <label htmlFor="open_on_weekends">Atende fim de semana</label>
+              <label htmlFor="open_on_weekends">Atiende fin de semana</label>
 
               <div className="button-select">
-                <button type="button" className="active">Sim</button>
-                <button type="button">Não</button>
+                <button
+                  type="button"
+                  onClick={() => set_open_on_weekends(true)}
+                  className={open_on_weekends ? "active" : ""}
+                >
+                  Si
+                </button>
+                <button
+                  type="button"
+                  onClick={() => set_open_on_weekends(false)}
+                  className={!open_on_weekends ? "active" : ""}
+                >
+                  No
+                </button>
               </div>
             </div>
           </fieldset>
