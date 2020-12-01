@@ -32,10 +32,10 @@ export default function CreateOrphanage() {
     }
 
     const selected_images = Array.from(event.target.files)
-    set_images(selected_images)
+    set_images([...images, ...selected_images])
 
     const selected_images_preview = selected_images.map(image => URL.createObjectURL(image))
-    set_preview_images(selected_images_preview)
+    set_preview_images([...preview_images, ...selected_images_preview])
   }
 
   function handleMapClick(event: LeafletMouseEvent){
@@ -132,7 +132,7 @@ export default function CreateOrphanage() {
               <input
                 multiple
                 type="file"
-                id="image[]"
+                id="images[]"
                 onChange={handleSelectImages}
               />
 
